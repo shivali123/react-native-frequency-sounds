@@ -19,9 +19,9 @@ public class Module extends ReactContextBaseJavaModule {
   private static final String DURATION_SHORT_KEY = "SHORT";
   private static final String DURATION_LONG_KEY = "LONG";
 
-  private final int duration = 3; // seconds
+  private final int duration = 100; // seconds
   private final int sampleRate = 8000;
-  private final int numSamples = duration * sampleRate;
+  private final int numSamples = (duration * sampleRate)/1000;
   private final double sample[] = new double[numSamples];
   private final double freqOfTone = 220; // hz
   private final byte generatedSnd[] = new byte[2 * numSamples];
