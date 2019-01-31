@@ -16,15 +16,12 @@ import android.media.AudioTrack;
 
 public class Module extends ReactContextBaseJavaModule {
 
-  private static final String DURATION_SHORT_KEY = "SHORT";
-  private static final String DURATION_LONG_KEY = "LONG";
+  // private static final String DURATION_SHORT_KEY = "SHORT";
+  // private static final String DURATION_LONG_KEY = "LONG";
 
-  private final int duration = 3; // seconds
-  private final int sampleRate = 8000;
-  private final int numSamples = duration * sampleRate;
-  private final double sample[] = new double[numSamples];
-  private final double freqOfTone = 220; // hz
-  private final byte generatedSnd[] = new byte[2 * numSamples];
+  private int minTrackBufferSize;
+  private static final int SAMPLING_RATE = 44100;
+  private final short[] buffer = new short[minTrackBufferSize];
 
   public Module(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -35,35 +32,43 @@ public class Module extends ReactContextBaseJavaModule {
     return "FrequencySounds";
   }
 
-  @Override
-  public Map<String, Object> getConstants() {
-    final Map<String, Object> constants = new HashMap<>();
-    constants.put(DURATION_SHORT_KEY, Toast.LENGTH_SHORT);
-    constants.put(DURATION_LONG_KEY, Toast.LENGTH_LONG);
-    return constants;
-  }
+  // @Override
+  // public Map<String, Object> getConstants() {
+  //   final Map<String, Object> constants = new HashMap<>();
+  //   constants.put(DURATION_SHORT_KEY, Toast.LENGTH_SHORT);
+  //   constants.put(DURATION_LONG_KEY, Toast.LENGTH_LONG);
+  //   return constants;
+  // }
 
   void playSound(){
-    final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-           sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-           AudioFormat.ENCODING_PCM_16BIT, generatedSnd.length,
-           AudioTrack.MODE_STATIC);
-    audioTrack.write(generatedSnd, 0, generatedSnd.length);
+
+    final AudioTrack  audioTrack = new AudioTrack(
+         AudioManager.STREAM_MUSIC,
+         SAMPLING_RATE,
+         AudioFormat.CHANNEL_OUT_MONO,
+         AudioFormat.ENCODING_PCM_16BIT,
+         minTrackBufferSize,
+         AudioTrack.MODE_STREAM);
+  // audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
+  //          sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+  //          AudioFormat.ENCODING_PCM_16BIT, generatedSnd.length,
+  //          AudioTrack.MODE_STATIC);
+    audioTrack.write(buffer, 0, buffer.length);
     audioTrack.play();
    }
 
-  void genTone(double frequency){
-    for (int i = 0; i < numSamples; ++i) {
-        sample[i] = Math.sin(2 * Math.PI * i / (sampleRate/frequency));
-    }
-    int idx = 0;
-    for (final double dVal : sample) {
-        // scale to maximum amplitude
-        final short val = (short) ((dVal * 32767));
-        // in 16 bit wav PCM, first byte is the low order byte
-        generatedSnd[idx++] = (byte) (val & 0x00ff);
-        generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
+  void genTone(double frequency) {
+    minTrackBufferSize = AudioTrack.getMinBufferSize(SAMPLING_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
+    short[] buffer = new short[minTrackBufferSize];
+    double f = frequency;
+    double q = 0;
+    double level = 16384;
+    final double K = 2.0 * Math.PI / SAMPLING_RATE;
 
+    for (int i = 0; i < minTrackBufferSize; i++) {
+      f += (frequency - f) / 4096.0;
+      q += (q < Math.PI) ? f * K : (f * K) - (2.0 * Math.PI);
+      buffer[i] = (short) Math.round(Math.sin(q));
     }
   }
 
